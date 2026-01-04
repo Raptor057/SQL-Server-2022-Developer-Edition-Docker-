@@ -166,6 +166,12 @@ docker compose up -d
 - **El contenedor se apaga al iniciar**: revisa `docker logs mssqlserver-Standard`. Casi siempre es contrasena invalida.
 - **No conecta desde el host**: revisa que el puerto 1433 no este ocupado y que el firewall permita la entrada.
 - **Permisos en archivos**: asegurate de que Docker tenga permisos de lectura/escritura en `./sql-data`.
+  - En Linux, si el contenedor corre como usuario `mssql` (UID 10001) y ves errores de permisos:
+    ```bash
+    sudo mkdir -p sql-data
+    sudo chown -R 10001:0 sql-data
+    sudo chmod -R g+rwx sql-data
+    ```
 
 ---
 
