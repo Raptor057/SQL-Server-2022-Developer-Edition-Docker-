@@ -1,3 +1,7 @@
+# Linux host permissions fix (when container runs as user mssql/UID 10001):
+# sudo mkdir -p sql-data
+# sudo chown -R 10001:0 sql-data
+# sudo chmod -R g+rwx sql-data
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
