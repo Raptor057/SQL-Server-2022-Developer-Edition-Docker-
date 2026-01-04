@@ -4,7 +4,7 @@
 # sudo chmod -R g+rwx sql-data
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04
     container_name: mssqlserver-Standard
     ports:
       - "1433:1433"
