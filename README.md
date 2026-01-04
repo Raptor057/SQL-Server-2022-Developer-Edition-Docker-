@@ -10,7 +10,29 @@ Repositorio para levantar **SQL Server 2022 Standard** en Docker usando **docker
 
 - Docker Engine + Docker Compose (v2 o superior)
 - Puerto **1433** libre en el host
-- RAM disponible (recomendado: 2 GB libres o mas)
+- RAM disponible (recomendado: 8 GB o mas para uso productivo)
+
+---
+
+## Version de SQL Server utilizada
+
+Este proyecto utiliza la imagen oficial de Microsoft:
+
+- **SQL Server 2022 Standard Edition**
+- **Cumulative Update:** CU21
+- **Sistema base:** Ubuntu 22.04
+- **Tag exacto:**
+
+```
+
+mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04
+
+```
+
+> Nota: originalmente se usaba `2022-latest`, pero se cambió a un **tag de CU fijo** para evitar correr versiones RTM sin parches acumulativos.
+
+Fuente oficial de tags:
+https://hub.docker.com/r/microsoft/mssql-server
 
 ---
 
@@ -28,20 +50,30 @@ Repositorio para levantar **SQL Server 2022 Standard** en Docker usando **docker
 
 Archivo `.env` en la misma carpeta del `docker-compose.yml`:
 
-```
+```env
 ACCEPT_EULA=Y
 MSSQL_PID_KEY=Standard
 SA_PASSWORD=P@ssw0rd_Str0ng!
+
 ```
 
-`MSSQL_PID_KEY` puede ser `Standard` o tu clave de producto (si aplica).
+`MSSQL_PID_KEY` puede ser:
+
+-   `Standard`
+    
+-   o una **clave de producto valida** (si aplica)
+    
 
 Reglas para `SA_PASSWORD`:
-- Minimo 8 caracteres
-- Debe incluir mayusculas, minusculas, digitos y simbolos
-- Si no cumple, el contenedor se apaga
 
----
+-   Minimo 8 caracteres
+    
+-   Debe incluir mayusculas, minusculas, digitos y simbolos
+    
+-   Si no cumple, el contenedor se apaga
+    
+
+----------
 
 ## Puesta en marcha
 
@@ -56,146 +88,205 @@ docker compose up -d
 docker compose ps
 
 # 4) ver logs (hasta ver "Server is listening on ... 1433")
-docker logs -f mssqlserver-Standard
+docker logs -f mssqlserver
+
 ```
 
----
+----------
 
 ## Persistencia de datos
 
 Los datos se guardan en `./sql-data` (relativo al `docker-compose.yml`) y se mapean a `/var/opt/mssql` dentro del contenedor.
 
-- Para borrar TODO (contenedor + datos):
+En hosts Linux, es necesario ajustar permisos:
 
 ```bash
-docker compose down
-# eliminar carpeta de datos (cuidado)
-# rmdir /s /q sql-data
+sudo mkdir -p sql-data
+sudo chown -R 10001:0 sql-data
+sudo chmod -R 770 sql-data
+
 ```
 
-> `docker compose down` **no** elimina los datos si la carpeta `sql-data` permanece.
+> `docker compose down` **no elimina los datos** mientras la carpeta `sql-data` exista.
 
----
+----------
+
+## Limites de recursos (Docker)
+
+Para evitar que SQL Server consuma todos los recursos del host, se aplican limites a nivel Docker:
+
+```yaml
+mem_limit: 6g
+cpus: 2
+
+```
+
+Estos valores estan pensados para un host con:
+
+-   16 GB de RAM
+    
+-   CPU de 4 cores
+    
+
+Ajustar segun el hardware disponible.
+
+----------
+
+## Limite de memoria dentro de SQL Server (recomendado)
+
+Adicionalmente al limite de Docker, se recomienda limitar la memoria interna del motor SQL Server.
+
+Ejecutar una sola vez dentro de SQL Server:
+
+```sql
+EXEC sys.sp_configure 'show advanced options', 1;
+RECONFIGURE;
+
+EXEC sys.sp_configure 'max server memory (MB)', 5120;
+RECONFIGURE;
+
+```
+
+Esto deja:
+
+-   Docker: 6 GB max
+    
+-   SQL Server: 5 GB max
+    
+-   Margen para buffers internos y SO
+    
+
+### Verificar configuracion aplicada
+
+```sql
+SELECT
+  name,
+  value,
+  value_in_use
+FROM sys.configurations
+WHERE name IN ('show advanced options', 'max server memory (MB)');
+
+```
+
+----------
 
 ## Conexion
 
 Puedes conectarte desde **Azure Data Studio** o **SSMS** con:
 
-- Servidor: `localhost` (o `127.0.0.1`)
-- Puerto: `1433`
-- Autenticacion: SQL Login
-- Usuario: `sa`
-- Password: el valor de `SA_PASSWORD`
-- Encrypt: Optional / Trust server certificate
+-   Servidor: `localhost` (o `127.0.0.1`)
+    
+-   Puerto: `1433`
+    
+-   Autenticacion: SQL Login
+    
+-   Usuario: `sa`
+    
+-   Password: el valor de `SA_PASSWORD`
+    
+-   Encrypt: Optional / Trust server certificate
+    
 
 ### Cadenas de conexion (ejemplos)
 
 **ADO.NET (.NET)**
+
 ```
 Server=localhost,1433;Database=master;User Id=sa;Password=P@ssw0rd_Str0ng!;TrustServerCertificate=True;
+
 ```
 
 **ODBC**
+
 ```
 Driver={ODBC Driver 18 for SQL Server};Server=localhost,1433;Database=master;Uid=sa;Pwd=P@ssw0rd_Str0ng!;TrustServerCertificate=Yes;
+
 ```
 
 **JDBC**
+
 ```
 jdbc:sqlserver://localhost:1433;databaseName=master;user=sa;password=P@ssw0rd_Str0ng!;trustServerCertificate=true;
+
 ```
 
----
+----------
 
 ## Comandos utiles
 
 ### Ejecutar T-SQL dentro del contenedor
 
 ```bash
-docker exec -it mssqlserver-Standard /opt/mssql-tools/bin/sqlcmd \
+docker exec -it mssqlserver /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'P@ssw0rd_Str0ng!' -Q "SELECT @@VERSION;"
+
 ```
 
-### Crear una base de datos de ejemplo
-
-```bash
-docker exec -it mssqlserver-Standard /opt/mssql-tools/bin/sqlcmd \
-  -S localhost -U sa -P 'P@ssw0rd_Str0ng!' \
-  -Q "IF DB_ID('Demo') IS NULL CREATE DATABASE Demo;"
-```
-
-### Cambiar la contrasena de `sa`
+### Ver edicion y CU
 
 ```sql
-ALTER LOGIN sa WITH PASSWORD = 'TuNuev@Clave2025!';
+SELECT
+  SERVERPROPERTY('Edition') AS Edition,
+  SERVERPROPERTY('ProductVersion') AS ProductVersion,
+  SERVERPROPERTY('ProductUpdateLevel') AS ProductUpdateLevel;
+
 ```
 
----
+----------
 
 ## Ciclo de vida
 
 ```bash
-# detener
 docker compose stop
-
-# iniciar nuevamente
 docker compose start
-
-# apagar y quitar contenedor (datos permanecen)
 docker compose down
+
 ```
 
----
+----------
 
-## Actualizar imagen
+## Actualizar version de SQL Server
 
-1) Respaldar tus bases (buena practica)
-2) Traer la ultima imagen
-3) Recrear el contenedor
+1.  Respaldar bases de datos
+    
+2.  Cambiar el tag de la imagen en `docker-compose.yml`
+    
+3.  Recrear el contenedor
+    
 
 ```bash
-docker pull mcr.microsoft.com/mssql/server:2022-latest
 docker compose down
+docker compose pull
 docker compose up -d
+
 ```
 
----
-
-## Solucion de problemas
-
-- **El contenedor se apaga al iniciar**: revisa `docker logs mssqlserver-Standard`. Casi siempre es contrasena invalida.
-- **No conecta desde el host**: revisa que el puerto 1433 no este ocupado y que el firewall permita la entrada.
-- **Permisos en archivos**: asegurate de que Docker tenga permisos de lectura/escritura en `./sql-data`.
-  - En Linux, si el contenedor corre como usuario `mssql` (UID 10001) y ves errores de permisos:
-    ```bash
-    sudo mkdir -p sql-data
-    sudo chown -R 10001:0 sql-data
-    sudo chmod -R g+rwx sql-data
-    ```
-
----
+----------
 
 ## Seguridad
 
 Este ejemplo expone `sa` y su contrasena en texto claro para fines didacticos.
 
 Recomendaciones:
-- No compartas tu `.env`
-- Cambia la contrasena despues del primer arranque
-- Restringe el puerto segun el entorno (firewall/redes de Docker)
 
----
+-   No compartas tu `.env`
+    
+-   Cambia la contrasena despues del primer arranque
+    
+-   Restringe el puerto 1433 por firewall
+    
+-   Usa usuarios de aplicacion en lugar de `sa`
+    
 
-## Captura de ejemplo (Visual Studio Code)
-
-Usando la extension de [SQL Server (mssql)](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql)
-
-![Visual Studio Code connect](./Visual%20Studio%20Code%20Connect.png)
-
----
+----------
 
 ## Creditos
 
-- Imagen oficial: `mcr.microsoft.com/mssql/server:2022-latest`
-- Edicion: **Standard**
-- Extension [SQL Server (mssql)](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql)
+-   Imagen oficial de Microsoft SQL Server
+    
+-   Docker Hub: [https://hub.docker.com/r/microsoft/mssql-server](https://hub.docker.com/r/microsoft/mssql-server)
+    
+-   Edicion: **SQL Server 2022 Standard**
+    
+-   Cumulative Update: **CU21**
+    
