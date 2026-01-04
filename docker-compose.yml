@@ -18,4 +18,6 @@ services:
       # Si usas una que no cumple, el contenedor se apaga.
     volumes:
       - ./sql-data:/var/opt/mssql
+    mem_limit: 6g
+    cpus: 2
     restart: always
