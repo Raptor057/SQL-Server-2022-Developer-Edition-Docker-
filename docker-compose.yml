@@ -1,14 +1,14 @@
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: mssqlserver-developer-edition
+    container_name: mssqlserver-Standard
     ports:
       - "1433:1433"
     env_file:
       - .env
     environment:
       - ACCEPT_EULA=${ACCEPT_EULA}
-      - MSSQL_PID=${MSSQL_PID}
+      - MSSQL_PID=${MSSQL_PID_KEY:-Standard}
       - SA_PASSWORD=${SA_PASSWORD}  # cambia si quieres
       # Nota: la contrasena de sa debe cumplir complejidad (min. 8, mayuscula, minuscula, digito y simbolo).
       # Si usas una que no cumple, el contenedor se apaga.

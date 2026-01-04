@@ -1,8 +1,8 @@
-# SQL Server 2022 Developer Edition (Docker + Compose)
+# SQL Server 2022 Standard Edition (Docker + Compose)
 
-Repositorio para levantar **SQL Server 2022 Developer** en Docker usando **docker-compose** con **.env** y **persistencia local** en la carpeta del proyecto.
+Repositorio para levantar **SQL Server 2022 Standard** en Docker usando **docker-compose** con **.env** y **persistencia local** en la carpeta del proyecto.
 
-> Aviso de licencia: la edicion **Developer** es gratuita **solo para desarrollo, pruebas y demos**. **No** usar en **produccion**.
+> Aviso de licencia: la edicion **Standard** requiere **licencia valida** para su uso.
 
 ---
 
@@ -30,9 +30,11 @@ Archivo `.env` en la misma carpeta del `docker-compose.yml`:
 
 ```
 ACCEPT_EULA=Y
-MSSQL_PID=Developer
+MSSQL_PID_KEY=Standard
 SA_PASSWORD=P@ssw0rd_Str0ng!
 ```
+
+`MSSQL_PID_KEY` puede ser `Standard` o tu clave de producto (si aplica).
 
 Reglas para `SA_PASSWORD`:
 - Minimo 8 caracteres
@@ -54,7 +56,7 @@ docker compose up -d
 docker compose ps
 
 # 4) ver logs (hasta ver "Server is listening on ... 1433")
-docker logs -f mssqlserver-developer-edition
+docker logs -f mssqlserver-Standard
 ```
 
 ---
@@ -110,14 +112,14 @@ jdbc:sqlserver://localhost:1433;databaseName=master;user=sa;password=P@ssw0rd_St
 ### Ejecutar T-SQL dentro del contenedor
 
 ```bash
-docker exec -it mssqlserver-developer-edition /opt/mssql-tools/bin/sqlcmd \
+docker exec -it mssqlserver-Standard /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'P@ssw0rd_Str0ng!' -Q "SELECT @@VERSION;"
 ```
 
 ### Crear una base de datos de ejemplo
 
 ```bash
-docker exec -it mssqlserver-developer-edition /opt/mssql-tools/bin/sqlcmd \
+docker exec -it mssqlserver-Standard /opt/mssql-tools/bin/sqlcmd \
   -S localhost -U sa -P 'P@ssw0rd_Str0ng!' \
   -Q "IF DB_ID('Demo') IS NULL CREATE DATABASE Demo;"
 ```
@@ -161,7 +163,7 @@ docker compose up -d
 
 ## Solucion de problemas
 
-- **El contenedor se apaga al iniciar**: revisa `docker logs mssqlserver-developer-edition`. Casi siempre es contrasena invalida.
+- **El contenedor se apaga al iniciar**: revisa `docker logs mssqlserver-Standard`. Casi siempre es contrasena invalida.
 - **No conecta desde el host**: revisa que el puerto 1433 no este ocupado y que el firewall permita la entrada.
 - **Permisos en archivos**: asegurate de que Docker tenga permisos de lectura/escritura en `./sql-data`.
 
@@ -189,5 +191,5 @@ Usando la extension de [SQL Server (mssql)](https://marketplace.visualstudio.com
 ## Creditos
 
 - Imagen oficial: `mcr.microsoft.com/mssql/server:2022-latest`
-- Edicion: **Developer** (solo dev/test/demos)
+- Edicion: **Standard**
 - Extension [SQL Server (mssql)](https://marketplace.visualstudio.com/items?itemName=ms-mssql.mssql)
